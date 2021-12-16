@@ -1,0 +1,148 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="BMP">
+      <UniqueIdentifier>{2a079449-e9c2-43bd-9bff-ae0ae8bb33f1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="PNG">
+      <UniqueIdentifier>{dce41be1-fa88-4b2e-b4c5-d65ebca8ed0f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="WAV">
+      <UniqueIdentifier>{5a82d60f-d655-4a86-a855-b2f1761c6e93}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TrueType">
+      <UniqueIdentifier>{4aa5ca8a-cd20-43be-82b8-e323df1d4530}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="TXT">
+      <UniqueIdentifier>{0b6bf56b-b312-46ce-aeaa-6a7d302a43f0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ZIP">
+      <UniqueIdentifier>{bf67b801-fc85-4637-bfc0-4ac226eefa19}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="OGG">
+      <UniqueIdentifier>{43cbff80-0f7b-4982-bba5-70c855b6cfe8}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)BMPDecoder.h">
+      <Filter>BMP</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)BMPEncoder.h">
+      <Filter>BMP</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)CRC32.h">
+      <Filter>PNG</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Adler32.h">
+      <Filter>PNG</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Inflate.h">
+      <Filter>PNG</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Deflate.h">
+      <Filter>PNG</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)PNGDecoder.h">
+      <Filter>PNG</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)PNGEncoder.h">
+      <Filter>PNG</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ChunkReader.h">
+      <Filter>PNG</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ChunkWriter.h">
+      <Filter>PNG</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)WAVDecoder.h">
+      <Filter>WAV</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)WAVEncoder.h">
+      <Filter>WAV</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Coder.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)TrueTypeDecoder.h">
+      <Filter>TrueType</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)TextDecoder.h">
+      <Filter>TXT</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)TextEncoder.h">
+      <Filter>TXT</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ZIPDecoder.h">
+      <Filter>ZIP</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)ZIPEncoder.h">
+      <Filter>ZIP</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)OGGDecoder.h">
+      <Filter>OGG</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)OGGEncoder.h">
+      <Filter>OGG</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Vorbis.h">
+      <Filter>OGG</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)VorbisSupporter.h">
+      <Filter>OGG</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)VorbisHeader.h">
+      <Filter>OGG</Filter>
+    </ClInclude>
+    <ClInclude Include="$(MSBuildThisFileDirectory)VorbisPacket.h">
+      <Filter>OGG</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)TrueTypeDecoder.cpp">
+      <Filter>TrueType</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)BMPDecoder.cpp">
+      <Filter>BMP</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)BMPEncoder.cpp">
+      <Filter>BMP</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)WAVDecoder.cpp">
+      <Filter>WAV</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Adler32.cpp">
+      <Filter>PNG</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)CRC32.cpp">
+      <Filter>PNG</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)ChunkReader.cpp">
+      <Filter>PNG</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Inflate.cpp">
+      <Filter>PNG</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)PNGDecoder.cpp">
+      <Filter>PNG</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)TextDecoder.cpp">
+      <Filter>TXT</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)ZIPDecode.cpp">
+      <Filter>ZIP</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)OGGDecoder.cpp">
+      <Filter>OGG</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Vorbis.cpp">
+      <Filter>OGG</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)VorbisSupporter.cpp">
+      <Filter>OGG</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)VorbisHeaderDecoder.cpp">
+      <Filter>OGG</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)VorbisPacketDecoder.cpp">
+      <Filter>OGG</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

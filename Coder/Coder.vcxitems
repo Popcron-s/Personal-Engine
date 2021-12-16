@@ -1,0 +1,60 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <ItemsProjectGuid>{A14E6814-C422-4150-A462-B41257FDF410}</ItemsProjectGuid>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectCapability Include="SourceItemsFromImports" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Adler32.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)BMPDecoder.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)BMPEncoder.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ChunkReader.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ChunkWriter.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Coder.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)CRC32.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Deflate.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Inflate.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)OGGDecoder.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)OGGEncoder.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)PNGDecoder.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)PNGEncoder.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)TextDecoder.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)TextEncoder.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)TrueTypeDecoder.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Vorbis.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)VorbisHeader.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)VorbisPacket.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)VorbisSupporter.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)WAVDecoder.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)WAVEncoder.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ZIPDecoder.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)ZIPEncoder.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="$(MSBuildThisFileDirectory)Adler32.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)BMPDecoder.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)BMPEncoder.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)ChunkReader.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)CRC32.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Inflate.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)OGGDecoder.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)PNGDecoder.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)TextDecoder.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)TrueTypeDecoder.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)Vorbis.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)VorbisHeaderDecoder.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)VorbisPacketDecoder.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)VorbisSupporter.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)WAVDecoder.cpp" />
+    <ClCompile Include="$(MSBuildThisFileDirectory)ZIPDecode.cpp" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <ItemsProjectGuid>{8214A11D-B4B6-4299-94F1-12363A97283E}</ItemsProjectGuid>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>%(AdditionalIncludeDirectories);$(MSBuildThisFileDirectory)</AdditionalIncludeDirectories>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ProjectCapability Include="SourceItemsFromImports" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="$(MSBuildThisFileDirectory)Base_FileIO.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Base_Input_GyroSensor.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Base_Input_Keyboard.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Base_Input_Mouse.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Base_Input_Touch.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Base_Output_Graphics.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Base_Output_Sounds.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Base_Platform.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)Base_Timer.h" />
+    <ClInclude Include="$(MSBuildThisFileDirectory)InterfaceSingleton.h" />
+  </ItemGroup>
+</Project>
