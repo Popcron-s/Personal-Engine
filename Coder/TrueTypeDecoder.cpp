@@ -12,12 +12,14 @@
 struct GLYF_DATA{
 	UINT* contours;
 	UINT contours_num;
-	struct POINT{
-		FLOAT x, y;
-		UINT flag;
-	}*point;
+	VECTOR2* point;
 	//max point num = contours[contours_num-1]+1
 };
+
+bool SetGlyph(const BYTE* glyf_buf, const UINT glyf_size,
+			  const BYTE* hmtx_buf, const UINT hmtx_size,
+			  const UINT* glyphOffsets, const UINT numHMat,
+			  const UINT index, GLYPH* glyph_array);
 
 bool Checksum(const BYTE* buf, const UINT size, UINT checksum){
 	UINT sum = 0;
@@ -98,227 +100,331 @@ bool hmtx(const BYTE* buf, const UINT size, UINT numHMat, UINT index, UINT16& ad
 	return true;
 }
 
-//change without bezier spline
-bool glyf(const BYTE* buf, const UINT size, const UINT* glyphOffsets, UINT glyphIndex, GLYPH* glyph_vtx, GLYF_DATA& glyph){
+bool glyf_vtxSet(const BYTE* glyf_buf, const UINT glyf_size, UINT& pos, const UINT glyphIndex, GLYPH* glyph_array){
+	INT16 xMin = Output16(glyf_buf, pos);
+	INT16 yMin = Output16(glyf_buf, pos);
+	INT16 xMax = Output16(glyf_buf, pos);
+	INT16 yMax = Output16(glyf_buf, pos);
+
+	glyph_array[glyphIndex].vtx[0] = {{(FLOAT)xMin, (FLOAT)yMax, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {}, {0.0f, 0.0f}};
+	glyph_array[glyphIndex].vtx[1] = {{(FLOAT)xMax, (FLOAT)yMax, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {}, {1.0f, 0.0f}};
+	glyph_array[glyphIndex].vtx[2] = {{(FLOAT)xMin, (FLOAT)yMin, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {}, {0.0f, 1.0f}};
+	glyph_array[glyphIndex].vtx[3] = {{(FLOAT)xMax, (FLOAT)yMin, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {}, {1.0f, 1.0f}};
+	glyph_array[glyphIndex].vtx_num = 4;
+
+	glyph_array[glyphIndex].idx.index = new UINT[6];
+	glyph_array[glyphIndex].idx.index[0] = 0;
+	glyph_array[glyphIndex].idx.index[1] = 1;
+	glyph_array[glyphIndex].idx.index[2] = 2;
+	glyph_array[glyphIndex].idx.index[3] = 1;
+	glyph_array[glyphIndex].idx.index[4] = 2;
+	glyph_array[glyphIndex].idx.index[5] = 3;
+	glyph_array[glyphIndex].idx.num = 6;
+
+	return true;
+}
+bool glyf_Simple(const BYTE* glyf_buf, const UINT glyf_size, UINT& pos, const UINT cont_num, GLYF_DATA& glyph){
+	//simple
+	glyph.contours_num = cont_num;
+	const UINT16* endOC = (UINT16*)&(glyf_buf[pos]);	pos += glyph.contours_num*2;
+	UINT16 instLen = Output16(glyf_buf, pos);
+	const BYTE* inst = &(glyf_buf[pos]);	pos += instLen;
+	UINT max_point = Shift16(endOC[glyph.contours_num-1])+1;
+
+	glyph.contours = new UINT[glyph.contours_num];
+
+	for(UINT i = 0 ; i<glyph.contours_num ; ++i){
+		glyph.contours[i] = Shift16(endOC[i]);
+	}
+
+	BYTE* flags = new BYTE[max_point]{};
+	VECTOR2* tv = new VECTOR2[max_point]{};
+	INT flag_repeat = 0;
+	BYTE prev_flag = 0;
+	UINT curOC = 0;
+	INT curve_point = 0;
+
+	for(UINT i = 0 ; i<max_point ; ++i){
+		if(flag_repeat <= 0){
+			flags[i] = Output8(glyf_buf, pos);
+			if(flags[i] & 0x08){
+				flag_repeat = Output8(glyf_buf, pos);
+				prev_flag = flags[i];
+			}
+		}
+		else{
+			flags[i] = prev_flag;
+			--flag_repeat;
+		}
+
+		//&0x1 / 1 - point / 0 - curve point
+		if(!(flags[i]&0x01)){
+			if(flags[i-1]&0x01){curve_point += 7;}
+			--curve_point;
+		}
+
+		if(glyph.contours[curOC] == i){
+			glyph.contours[curOC] += curve_point;
+			++curOC;
+		}
+	}
+
+	FLOAT prev_pos = 0.0f;
+	//x
+	for(UINT i = 0 ; i<max_point ; ++i){
+		INT16 x = 0;
+		if(flags[i] & 0x02){
+			x = Output8(glyf_buf, pos);
+			x = (flags[i] & 0x10)?x:-x;
+		}
+		else{
+			if(flags[i] & 0x10){
+				x = 0;
+			}
+			else{
+				x = Output16(glyf_buf, pos);
+			}
+		}
+		tv[i].x = x+prev_pos;
+		prev_pos = x+prev_pos;
+	}
+	prev_pos = 0;
+	//y
+	for(UINT i = 0 ; i<max_point ; ++i){
+		INT16 y = 0;
+		if(flags[i] & 0x04){
+			y = Output8(glyf_buf, pos);
+			y = (flags[i] & 0x20)?y:-y;
+		}
+		else{
+			if(flags[i] & 0x20){
+				y = 0;
+			}
+			else{
+				y = Output16(glyf_buf, pos);
+			}
+		}
+		tv[i].y = y+prev_pos;
+		prev_pos = y+prev_pos;
+	}
+
+	glyph.point = new VECTOR2[glyph.contours[glyph.contours_num-1]+1]{};
+
+	curOC = 0;
+	curve_point = 0;
+	for(UINT i = 0, j = 0 ; i<max_point ; ++i){
+		if(flags[i]&0x01){
+			if(curve_point != 0){
+				//bezier
+				for(FLOAT b_t = 0.125f ; b_t < 1.0f ; b_t += 0.125f){
+					switch(curve_point){
+					case 1:		glyph.point[j++] = VECCAL::BezierSpline2(&(tv[i-curve_point-1]), b_t);				break;
+					case 2:		glyph.point[j++] = VECCAL::BezierSpline3(&(tv[i-curve_point-1]), b_t);				break;
+					default:	glyph.point[j++] = VECCAL::BezierSpline(&(tv[i-curve_point-1]), curve_point+2, b_t);	break;
+					}
+				}
+				curve_point = 0;
+			}
+			glyph.point[j++] = tv[i];
+		}
+		else{
+			++curve_point;
+		}
+
+		if(Shift16(endOC[curOC]) == i){
+			if(curve_point > 0){
+				//bezier
+				for(FLOAT b_t = 0.125f ; b_t < 1.0f ; b_t += 0.125f){
+					switch(curve_point){
+					case 1:		glyph.point[j++] = VECCAL::BezierSpline2(&(tv[i-curve_point-1]), b_t);				break;
+					case 2:		glyph.point[j++] = VECCAL::BezierSpline3(&(tv[i-curve_point-1]), b_t);				break;
+					default:	glyph.point[j++] = VECCAL::BezierSpline(&(tv[i-curve_point-1]), curve_point+2, b_t);	break;
+					}
+				}
+				curve_point = 0;
+			}
+			++curOC;
+		}
+	}
+
+	delete[] tv;
+	delete[] flags;
+
+	return true;
+}
+bool glyf_Composite(const BYTE* glyf_buf, const UINT glyf_size,
+					const BYTE* hmtx_buf, const UINT hmtx_size,
+					UINT& pos, const UINT cont_num, 
+					const UINT* glyphOffsets, const UINT numHMat, 
+					GLYPH* glyph_array, GLYF_DATA& glyph){
+	//composite
+	/*
+	Flags Bit Description 
+	//0x0001 ARG_1_AND_2_ARE_WORDS
+	0x0002 ARGS_ARE_XY_VALUES
+	0x0004 ROUND_XY_TO_GRID
+	//0x0008 WE_HAVE_A_SCALE
+	-0x0010 RESERVED
+	0x0020 MORE_COMPONENTS
+	//0x0040 WE_HAVE_AN_X_AND_Y_SCALE
+	//0x0080 WE_HAVE_A_TWO_BY_TWO
+	0x0100 WE_HAVE_INSTRUCTIONS
+	0x0200 USE_MY_METRICS
+	-0x0400 OVERLAP_COMPOUND
+	-0x0800 SCALED_COMPONENT_OFFSET
+	0x1000 UNSCALED_COMPONENT_OFFSET
+	-0x2000
+	-0x4000
+	-0x8000
+	*/
+	if(cont_num != -1){return false;}
+	glyph.contours_num = 0;
+	//std::cout<<"composite table is not set"<<std::endl;
+
+	UINT16 flag = 0x0020;
+
+	union b2i{
+		BYTE b[4];
+		UINT i;
+	}conv;
+	conv.i = 0;
+
+	union b2v{
+		BYTE b[8];
+		VECTOR2 v;
+	}convf;
+
+	struct glypfSet{
+		UINT idx;
+		FLOAT matrix[6] = {1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f};	
+		//scale_x = 0, scale_01 = 1, scale_10 = 2, scale_y = 3, 4 = arg1, 5 = arg2
+	}set[256];
+
+	bool complete = true;
+
+	UINT set_num = 0;
+	for( ; flag & 0x0020 ; ++set_num){
+		flag = Output16(glyf_buf, pos);
+		set[set_num].idx = Output16(glyf_buf, pos);
+		//std::cout<<"flag : "<<flag<<std::endl;
+		if(flag & 0xEC10){/*std::cout<<"reversed"<<std::endl;*/ complete =false; break;}
+		//F2DOT == value/16384.0f
+		if(flag & 0x0001){
+			INT16 arg1 = Output16(glyf_buf, pos);	//(SHORT or FWord) argument1; 
+			INT16 arg2 = Output16(glyf_buf, pos);	//(SHORT or FWord) argument2; 
+			set[set_num].matrix[4] = arg1;
+			set[set_num].matrix[5] = arg2;
+		}
+		else{
+			INT16 arg1 = Output8(glyf_buf, pos);	//USHORT arg1and2; /* (arg1 << 8) | arg2 */ 
+			INT16 arg2 = Output8(glyf_buf, pos);
+			set[set_num].matrix[4] = arg1;
+			set[set_num].matrix[5] = arg2;
+		}
+		if(flag & 0x0008){
+			UINT16 s = Output16(glyf_buf, pos);	//F2Dot14  scale;    /* Format 2.14 */ 
+			set[set_num].matrix[0] = (FLOAT)s/16384.0f;
+			set[set_num].matrix[3] = (FLOAT)s/16384.0f;
+		}
+		else if(flag & 0x0040){
+			UINT16 sx = Output16(glyf_buf, pos);	//F2Dot14  xscale;    /* Format 2.14 */ 
+			UINT16 sy = Output16(glyf_buf, pos);	//F2Dot14  yscale;    /* Format 2.14 */ 
+			set[set_num].matrix[0] = (FLOAT)sx/16384.0f;
+			set[set_num].matrix[3] = (FLOAT)sy/16384.0f;
+		}
+		else if(flag & 0x0080){
+			UINT16 sx = Output16(glyf_buf, pos);	//F2Dot14  xscale;    /* Format 2.14 */ 
+			UINT16 s01 = Output16(glyf_buf, pos);	//F2Dot14  scale01;   /* Format 2.14 */ 
+			UINT16 s10 = Output16(glyf_buf, pos);	//F2Dot14  scale10;   /* Format 2.14 */ 
+			UINT16 sy = Output16(glyf_buf, pos);	//F2Dot14  yscale;    /* Format 2.14 */ 
+			set[set_num].matrix[0] = (FLOAT)sx/16384.0f;
+			set[set_num].matrix[1] = (FLOAT)s01/16384.0f;
+			set[set_num].matrix[2] = (FLOAT)s10/16384.0f;
+			set[set_num].matrix[3] = (FLOAT)sy/16384.0f;
+		}
+
+		bool b = false;
+		b = SetGlyph(glyf_buf, glyf_size, hmtx_buf, hmtx_size, 
+					 glyphOffsets, numHMat, set[set_num].idx, glyph_array);
+		if(!b){/*std::cout<<"load glyf failed"<<std::endl;*/ complete = false; break;}
+		conv.b[0] = glyph_array[set[set_num].idx].buf[0];
+		conv.b[1] = glyph_array[set[set_num].idx].buf[1];
+		conv.b[2] = glyph_array[set[set_num].idx].buf[2];
+		conv.b[3] = glyph_array[set[set_num].idx].buf[3];
+		glyph.contours_num += conv.i;
+	}
+
+	if(complete){
+		glyph.contours = new UINT[glyph.contours_num];
+		UINT cont_add = 0;
+		for(UINT i = 0, cur_cont = 0 ; i<set_num ; ++i){
+			conv.b[0] = glyph_array[set[i].idx].buf[0];
+			conv.b[1] = glyph_array[set[i].idx].buf[1];
+			conv.b[2] = glyph_array[set[i].idx].buf[2];
+			conv.b[3] = glyph_array[set[i].idx].buf[3];
+			UINT cur_set_cont_num = conv.i;
+			GLYPH& cur_glyph = glyph_array[set[i].idx];
+			for(UINT j = 0 ; j<cur_set_cont_num ; ++j, ++cur_cont){
+				conv.b[0] = glyph_array[set[i].idx].buf[4+(j*4)+0];
+				conv.b[1] = glyph_array[set[i].idx].buf[4+(j*4)+1];
+				conv.b[2] = glyph_array[set[i].idx].buf[4+(j*4)+2];
+				conv.b[3] = glyph_array[set[i].idx].buf[4+(j*4)+3];
+				glyph.contours[cur_cont] = conv.i + cont_add;
+			}
+			conv.b[0] = glyph_array[set[i].idx].buf[4+((cur_set_cont_num-1)*4)+0];
+			conv.b[1] = glyph_array[set[i].idx].buf[4+((cur_set_cont_num-1)*4)+1];
+			conv.b[2] = glyph_array[set[i].idx].buf[4+((cur_set_cont_num-1)*4)+2];
+			conv.b[3] = glyph_array[set[i].idx].buf[4+((cur_set_cont_num-1)*4)+3];
+			cont_add += conv.i+1;
+		}
+		glyph.point = new VECTOR2[glyph.contours[glyph.contours_num-1]+1];
+		for(UINT i = 0, cur_point = 0 ; i<set_num ; ++i){
+			conv.b[0] = glyph_array[set[i].idx].buf[0];
+			conv.b[1] = glyph_array[set[i].idx].buf[1];
+			conv.b[2] = glyph_array[set[i].idx].buf[2];
+			conv.b[3] = glyph_array[set[i].idx].buf[3];
+			UINT cur_set_cont_num = conv.i;
+
+			conv.b[0] = glyph_array[set[i].idx].buf[4+((cur_set_cont_num-1)*4)+0];
+			conv.b[1] = glyph_array[set[i].idx].buf[4+((cur_set_cont_num-1)*4)+1];
+			conv.b[2] = glyph_array[set[i].idx].buf[4+((cur_set_cont_num-1)*4)+2];
+			conv.b[3] = glyph_array[set[i].idx].buf[4+((cur_set_cont_num-1)*4)+3];
+			UINT cur_max_point = conv.i+1;
+			for(UINT j = 0 ; j<cur_max_point ; ++j, ++cur_point){
+				convf.b[0] = glyph_array[set[i].idx].buf[4+(cur_set_cont_num*4)+(j*8)+0];
+				convf.b[1] = glyph_array[set[i].idx].buf[4+(cur_set_cont_num*4)+(j*8)+1];
+				convf.b[2] = glyph_array[set[i].idx].buf[4+(cur_set_cont_num*4)+(j*8)+2];
+				convf.b[3] = glyph_array[set[i].idx].buf[4+(cur_set_cont_num*4)+(j*8)+3];
+				convf.b[4] = glyph_array[set[i].idx].buf[4+(cur_set_cont_num*4)+(j*8)+4];
+				convf.b[5] = glyph_array[set[i].idx].buf[4+(cur_set_cont_num*4)+(j*8)+5];
+				convf.b[6] = glyph_array[set[i].idx].buf[4+(cur_set_cont_num*4)+(j*8)+6];
+				convf.b[7] = glyph_array[set[i].idx].buf[4+(cur_set_cont_num*4)+(j*8)+7];
+				VECTOR2 tp = convf.v;
+				VECTOR2 trans = {0.0f, 0.0f};
+				trans.x = (tp.x*set[i].matrix[0])+(tp.y*set[i].matrix[1])+set[i].matrix[4];
+				trans.y = (tp.x*set[i].matrix[2])+(tp.y*set[i].matrix[3])+set[i].matrix[5];
+				glyph.point[cur_point] = trans;
+			}
+		}
+	}
+
+	if(complete){return true;}
+	else{return false;}
+}
+
+bool glyf(const BYTE* glyf_buf, const UINT glyf_size, 
+		  const BYTE* hmtx_buf, const UINT hmtx_size,
+		  const UINT* glyphOffsets, const UINT numHMat, 
+		  UINT glyphIndex, GLYPH* glyph_array, 
+		  GLYF_DATA& glyph){
 	UINT pos = glyphOffsets[glyphIndex];
 
-	INT16 cont_num = Output16(buf, pos);
-	if(glyph_vtx != nullptr){
-		INT16 xMin = Output16(buf, pos);
-		INT16 yMin = Output16(buf, pos);
-		INT16 xMax = Output16(buf, pos);
-		INT16 yMax = Output16(buf, pos);
+	INT16 cont_num = Output16(glyf_buf, pos);
+	glyf_vtxSet(glyf_buf, glyf_size, pos, glyphIndex, glyph_array);
 
-		glyph_vtx->vtx[0] = {{(FLOAT)xMin, (FLOAT)yMax, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {}, {0.0f, 0.0f}};
-		glyph_vtx->vtx[1] = {{(FLOAT)xMax, (FLOAT)yMax, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {}, {1.0f, 0.0f}};
-		glyph_vtx->vtx[2] = {{(FLOAT)xMin, (FLOAT)yMin, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {}, {0.0f, 1.0f}};
-		glyph_vtx->vtx[3] = {{(FLOAT)xMax, (FLOAT)yMin, 0.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 1.0f}, {}, {1.0f, 1.0f}};
-		glyph_vtx->vtx_num = 4;
-
-		glyph_vtx->idx.index = new UINT[6];
-		glyph_vtx->idx.index[0] = 0;
-		glyph_vtx->idx.index[1] = 1;
-		glyph_vtx->idx.index[2] = 2;
-		glyph_vtx->idx.index[3] = 1;
-		glyph_vtx->idx.index[4] = 2;
-		glyph_vtx->idx.index[5] = 3;
-		glyph_vtx->idx.num = 6;
-	}
-	else{pos += 8;}
-
-	if(cont_num > 0){
-		//simple
-		glyph.contours_num = cont_num;
-		const UINT16* endOC = (UINT16*)&(buf[pos]);	pos += glyph.contours_num*2;
-		UINT16 instLen = Output16(buf, pos);
-		const BYTE* inst = &(buf[pos]);	pos += instLen;
-		UINT max_point = Shift16(endOC[glyph.contours_num-1])+1;
-
-		glyph.contours = new UINT[glyph.contours_num];
-
-		for(UINT i = 0 ; i<glyph.contours_num ; ++i){
-			glyph.contours[i] = Shift16(endOC[i]);
-		}
-
-		glyph.point = new GLYF_DATA::POINT[max_point]{};
-		BYTE* flags = new BYTE[max_point];
-		//VECTOR2* v = new VECTOR2[max_point];
-		INT flag_repeat = 0;
-		BYTE prev_flag = 0;
-		//UINT curOC = 0;
-		//INT curve_point = 0;
-
-		for(UINT i = 0 ; i<max_point ; ++i){
-			if(flag_repeat <= 0){
-				flags[i] = Output8(buf, pos);
-				if(flags[i] & 0x08){
-					flag_repeat = Output8(buf, pos);
-					prev_flag = flags[i];
-				}
-			}
-			else{
-				flags[i] = prev_flag;
-				--flag_repeat;
-			}
-			glyph.point[i].flag = flags[i]&0x01;
-		}
-
-		FLOAT prev_pos = 0.0f;
-		//x
-		for(UINT i = 0 ; i<max_point ; ++i){
-			INT16 x = 0;
-			if(flags[i] & 0x02){
-				x = Output8(buf, pos);
-				x = (flags[i] & 0x10)?x:-x;
-			}
-			else{
-				if(flags[i] & 0x10){
-					x = 0;
-				}
-				else{
-					x = Output16(buf, pos);
-				}
-			}
-			glyph.point[i].x = x+prev_pos;
-			prev_pos = x+prev_pos;
-		}
-		prev_pos = 0;
-		//y
-		for(UINT i = 0 ; i<max_point ; ++i){
-			INT16 y = 0;
-			if(flags[i] & 0x04){
-				y = Output8(buf, pos);
-				y = (flags[i] & 0x20)?y:-y;
-			}
-			else{
-				if(flags[i] & 0x20){
-					y = 0;
-				}
-				else{
-					y = Output16(buf, pos);
-				}
-			}
-			glyph.point[i].y = y+prev_pos;
-			prev_pos = y+prev_pos;
-		}
-
-		delete[] flags;
-
-		return true;
-	}
-	else{
-		//composite
-		/*
-		Flags Bit Description 
-		//0x0001 ARG_1_AND_2_ARE_WORDS
-		0x0002 ARGS_ARE_XY_VALUES
-		0x0004 ROUND_XY_TO_GRID
-		//0x0008 WE_HAVE_A_SCALE
-		-0x0010 RESERVED
-		0x0020 MORE_COMPONENTS
-		//0x0040 WE_HAVE_AN_X_AND_Y_SCALE
-		//0x0080 WE_HAVE_A_TWO_BY_TWO
-		0x0100 WE_HAVE_INSTRUCTIONS
-		0x0200 USE_MY_METRICS
-		-0x0400 OVERLAP_COMPOUND
-		-0x0800 SCALED_COMPONENT_OFFSET
-		0x1000 UNSCALED_COMPONENT_OFFSET
-		-0x2000
-		-0x4000
-		-0x8000
-		*/
-		if(cont_num != -1){return false;}
-		glyph.contours_num = 0;
-		//std::cout<<"composite table is not set"<<std::endl;
-
-		UINT16 flag = 0x0020;
-		UINT16 glyphIndex = 0;
-
-		struct glypfSet{
-			GLYF_DATA glyph = {nullptr, 0, nullptr};
-			FLOAT matrix[6] = {1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f};	
-			//scale_x = 0, scale_01 = 1, scale_10 = 2, scale_y = 3, 4 = arg1, 5 = arg2
-		}set[256];
-
-		bool complete = true;
-
-		UINT set_num = 0;
-		for( ; flag & 0x0020 ; ++set_num){
-			flag = Output16(buf, pos);
-			glyphIndex = Output16(buf, pos);
-			//std::cout<<"flag : "<<flag<<std::endl;
-			if(flag & 0xEC10){/*std::cout<<"reversed"<<std::endl;*/ complete =false; break;}
-			//F2DOT == value/16384.0f
-			if(flag & 0x0001){
-				INT16 arg1 = Output16(buf, pos);	//(SHORT or FWord) argument1; 
-				INT16 arg2 = Output16(buf, pos);	//(SHORT or FWord) argument2; 
-				set[set_num].matrix[4] = arg1;
-				set[set_num].matrix[5] = arg2;
-			}
-			else{
-				INT16 arg1 = Output8(buf, pos);	//USHORT arg1and2; /* (arg1 << 8) | arg2 */ 
-				INT16 arg2 = Output8(buf, pos);
-				set[set_num].matrix[4] = arg1;
-				set[set_num].matrix[5] = arg2;
-			}
-			if(flag & 0x0008){
-				UINT16 s = Output16(buf, pos);	//F2Dot14  scale;    /* Format 2.14 */ 
-				set[set_num].matrix[0] = (FLOAT)s/16384.0f;
-				set[set_num].matrix[3] = (FLOAT)s/16384.0f;
-			}
-			else if(flag & 0x0040){
-				UINT16 sx = Output16(buf, pos);	//F2Dot14  xscale;    /* Format 2.14 */ 
-				UINT16 sy = Output16(buf, pos);	//F2Dot14  yscale;    /* Format 2.14 */ 
-				set[set_num].matrix[0] = (FLOAT)sx/16384.0f;
-				set[set_num].matrix[3] = (FLOAT)sy/16384.0f;
-			}
-			else if(flag & 0x0080){
-				UINT16 sx = Output16(buf, pos);	//F2Dot14  xscale;    /* Format 2.14 */ 
-				UINT16 s01 = Output16(buf, pos);	//F2Dot14  scale01;   /* Format 2.14 */ 
-				UINT16 s10 = Output16(buf, pos);	//F2Dot14  scale10;   /* Format 2.14 */ 
-				UINT16 sy = Output16(buf, pos);	//F2Dot14  yscale;    /* Format 2.14 */ 
-				set[set_num].matrix[0] = (FLOAT)sx/16384.0f;
-				set[set_num].matrix[1] = (FLOAT)s01/16384.0f;
-				set[set_num].matrix[2] = (FLOAT)s10/16384.0f;
-				set[set_num].matrix[3] = (FLOAT)sy/16384.0f;
-			}
-
-			bool b = false;
-			b = glyf(buf, size, glyphOffsets, glyphIndex, nullptr, set[set_num].glyph);
-			if(!b){/*std::cout<<"load glyf failed"<<std::endl;*/ complete =false; break;}
-			glyph.contours_num += set[set_num].glyph.contours_num;
-		}
-
-		if(complete){
-			glyph.contours = new UINT[glyph.contours_num];
-			UINT cont_add = 0;
-			for(UINT i = 0, cur_cont = 0 ; i<set_num ; ++i){
-				for(UINT j = 0 ; j<set[i].glyph.contours_num ; ++j, ++cur_cont){
-					glyph.contours[cur_cont] = set[i].glyph.contours[j] + cont_add;
-				}
-				cont_add += set[i].glyph.contours[set[i].glyph.contours_num-1]+1;
-			}
-			glyph.point = new GLYF_DATA::POINT[glyph.contours[glyph.contours_num-1]+1];
-			for(UINT i = 0, cur_point = 0 ; i<set_num ; ++i){
-				UINT max_point = set[i].glyph.contours[set[i].glyph.contours_num-1]+1;
-				for(UINT j = 0 ; j<max_point ; ++j, ++cur_point){
-					GLYF_DATA::POINT tp = set[i].glyph.point[j];
-					GLYF_DATA::POINT trans = {0.0f, 0.0f, 0.0f};
-					trans.x = (tp.x*set[i].matrix[0])+(tp.y*set[i].matrix[1])+set[i].matrix[4];
-					trans.y = (tp.x*set[i].matrix[2])+(tp.y*set[i].matrix[3])+set[i].matrix[5];
-					glyph.point[cur_point] = trans;
-				}
-			}
-		}
-
-		for(UINT i = 0 ; i<set_num ; ++i){
-			delete[] set[i].glyph.contours;
-			delete[] set[i].glyph.point;
-		}
-
-		if(complete){return true;}
-		else{return false;}
-	}
+	if(cont_num > 0){return glyf_Simple(glyf_buf, glyf_size, pos, cont_num, glyph);}
+	else{return glyf_Composite(glyf_buf, glyf_size, hmtx_buf, hmtx_size, pos, cont_num,
+							   glyphOffsets, numHMat, glyph_array, glyph);}
 
 	return false;
 }
@@ -485,6 +591,68 @@ bool TrueTypeDecoder(const BYTE* buf, const UINT size,
 	return true;
 }
 
+bool SetGlyph(const BYTE* glyf_buf, const UINT glyf_size,
+			  const BYTE* hmtx_buf, const UINT hmtx_size,
+			  const UINT* glyphOffsets, const UINT numHMat,
+			  const UINT index, GLYPH* glyph_array){
+	if(glyph_array[index].buf != nullptr){return true;}
+
+	GLYF_DATA glyf_data = {};
+	UINT16 t_aw = 0;
+
+	if(!glyf(glyf_buf, glyf_size, hmtx_buf, hmtx_size, 
+			 glyphOffsets, numHMat, index, glyph_array, glyf_data)){return false;}
+	hmtx(hmtx_buf, hmtx_size, numHMat, index, t_aw);
+	glyph_array[index].advanceWidth = t_aw;
+
+	UINT buf_size = 4 + (glyf_data.contours_num*4) + ((glyf_data.contours[glyf_data.contours_num-1]+1)*8);
+	glyph_array[index].size = buf_size;
+	glyph_array[index].buf = new BYTE[buf_size];
+	{
+		UINT pos = 0;
+		union{
+			BYTE* b;
+			void* v;
+		}v2b;
+
+		v2b.v = &(glyf_data.contours_num);
+		glyph_array[index].buf[pos+0] = v2b.b[0];
+		glyph_array[index].buf[pos+1] = v2b.b[1];
+		glyph_array[index].buf[pos+2] = v2b.b[2];
+		glyph_array[index].buf[pos+3] = v2b.b[3];
+		pos += 4;
+
+		for(UINT i = 0 ; i<glyf_data.contours_num ; ++i){
+			v2b.v = &(glyf_data.contours[i]);
+			glyph_array[index].buf[pos+0] = v2b.b[0];
+			glyph_array[index].buf[pos+1] = v2b.b[1];
+			glyph_array[index].buf[pos+2] = v2b.b[2];
+			glyph_array[index].buf[pos+3] = v2b.b[3];
+			pos += 4;
+		}
+		for(UINT i = 0 ; i<glyf_data.contours[glyf_data.contours_num-1]+1 ; ++i){
+			v2b.v = &(glyf_data.point[i].x);
+			glyph_array[index].buf[pos+0] = v2b.b[0];
+			glyph_array[index].buf[pos+1] = v2b.b[1];
+			glyph_array[index].buf[pos+2] = v2b.b[2];
+			glyph_array[index].buf[pos+3] = v2b.b[3];
+			pos += 4;
+
+			v2b.v = &(glyf_data.point[i].y);
+			glyph_array[index].buf[pos+0] = v2b.b[0];
+			glyph_array[index].buf[pos+1] = v2b.b[1];
+			glyph_array[index].buf[pos+2] = v2b.b[2];
+			glyph_array[index].buf[pos+3] = v2b.b[3];
+			pos += 4;
+		}
+	}
+
+	if(glyf_data.contours != nullptr){delete[] glyf_data.contours;}
+	if(glyf_data.point != nullptr){delete[] glyf_data.point;}
+
+	return true;
+}
+
 bool TrueTypeGlyph(const BYTE* cmap_buf, const UINT cmap_size, 
 				   const BYTE* glyf_buf, const UINT glyf_size,
 				   const BYTE* hmtx_buf, const UINT hmtx_size,
@@ -493,67 +661,8 @@ bool TrueTypeGlyph(const BYTE* cmap_buf, const UINT cmap_size,
 	UINT index = 0;
 	if(!cmap(cmap_buf, cmap_size, word, index)){return false;}
 	
-	if(glyph_array[index].word == 0x00){
-		GLYF_DATA glyf_data = {};
-		UINT16 t_aw = 0;
-
-		glyph_array[index].word = word;
-		glyf(glyf_buf, glyf_size, glyphOffsets, index, &(glyph_array[index]), glyf_data);
-		hmtx(hmtx_buf, hmtx_size, numHMat, index, t_aw);
-		glyph_array[index].advanceWidth = t_aw;
-
-		UINT buf_size = 4 + (glyf_data.contours_num*4) + ((glyf_data.contours[glyf_data.contours_num-1]+1)*12);
-		glyph_array[index].size = buf_size;
-		glyph_array[index].buf = new BYTE[buf_size];
-		{
-			UINT pos = 0;
-			union{
-				BYTE* b;
-				void* v;
-			}v2b;
-
-			v2b.v = &(glyf_data.contours_num);
-			glyph_array[index].buf[pos+0] = v2b.b[0];
-			glyph_array[index].buf[pos+1] = v2b.b[1];
-			glyph_array[index].buf[pos+2] = v2b.b[2];
-			glyph_array[index].buf[pos+3] = v2b.b[3];
-			pos += 4;
-
-			for(UINT i = 0 ; i<glyf_data.contours_num ; ++i){
-				v2b.v = &(glyf_data.contours[i]);
-				glyph_array[index].buf[pos+0] = v2b.b[0];
-				glyph_array[index].buf[pos+1] = v2b.b[1];
-				glyph_array[index].buf[pos+2] = v2b.b[2];
-				glyph_array[index].buf[pos+3] = v2b.b[3];
-				pos += 4;
-			}
-			for(UINT i = 0 ; i<glyf_data.contours[glyf_data.contours_num-1]+1 ; ++i){
-				v2b.v = &(glyf_data.point[i].x);
-				glyph_array[index].buf[pos+0] = v2b.b[0];
-				glyph_array[index].buf[pos+1] = v2b.b[1];
-				glyph_array[index].buf[pos+2] = v2b.b[2];
-				glyph_array[index].buf[pos+3] = v2b.b[3];
-				pos += 4;
-
-				v2b.v = &(glyf_data.point[i].y);
-				glyph_array[index].buf[pos+0] = v2b.b[0];
-				glyph_array[index].buf[pos+1] = v2b.b[1];
-				glyph_array[index].buf[pos+2] = v2b.b[2];
-				glyph_array[index].buf[pos+3] = v2b.b[3];
-				pos += 4;
-
-				v2b.v = &(glyf_data.point[i].flag);
-				glyph_array[index].buf[pos+0] = v2b.b[0];
-				glyph_array[index].buf[pos+1] = v2b.b[1];
-				glyph_array[index].buf[pos+2] = v2b.b[2];
-				glyph_array[index].buf[pos+3] = v2b.b[3];
-				pos += 4;
-			}
-		}
-		
-		if(glyf_data.contours != nullptr){delete[] glyf_data.contours;}
-		if(glyf_data.point != nullptr){delete[] glyf_data.point;}
-	}
+	if(!SetGlyph(glyf_buf, glyf_size, hmtx_buf, hmtx_size, 
+				 glyphOffsets, numHMat, index, glyph_array)){return false;}
 
 	glyph_output = &(glyph_array[index]);
 	
