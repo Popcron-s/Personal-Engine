@@ -1,6 +1,6 @@
 # Personal-Engine
 
-## [윈도우 환경 엔진 테스트용 프로그램](https://github.com/Popcron-s/Personal-Engine/raw/master/ConsoleTest%20Output.zip)
+## [윈도우 환경 엔진 테스트용 프로그램](https://github.com/Popcron-s/Personal-Engine/raw/master/Resources/Info-Data/ConsoleTest%20Output.zip)
 * <h3>업로드 파일 테스트 일자 : 21 / 09 / 05</h3>
 * <h3>테스트 내용</h3>
 
@@ -14,6 +14,10 @@
 ## 개발 현황 및 개발 예정
 <img src="https://raw.githubusercontent.com/Popcron-s/Personal-Engine/3228a0f1ce3592e6f83b4bac8e6ea7428ad03243/Develop%20Simply%20UML.drawio.svg">
 
+## Update 2021-12-23
+* 폰트/ttf 알고리즘 수정
+* .sln VS2022버전으로 수정
+* LocalGit 사용 및 Github 연동
 
 ## 정리
 * <h3>우선 간략적으로 정리하고 이후 다이어그램 추가와 함께 수정할 예정</h3>
@@ -46,10 +50,22 @@
       - 오브젝트 셰이더에서 깊이와 색상을 기록한 플래그먼트 변수를 버퍼에 저장
       - 카메라 셰이더에서 저장된 플래그먼츠를 가져와 깊이별로 재정렬한 후 색상 합성하는 방식을 사용
       - 관련 문서
-        - ConsoleTest/resources/shader/default_vs.txt
-        - ConsoleTest/resources/shader/default_fs.txt
-        - ConsoleTest/resources/shader/cam_vs.txt
-        - ConsoleTest/resources/shader/cam_fs.txt
+        - Resources/shader/default_vs.txt
+        - Resources/shader/default_fs.txt
+        - Resources/shader/cam_vs.txt
+        - Resources/shader/cam_fs.txt
+    - Font Shader
+      - ttf에서 읽어들인 Vector데이터를 이용하여 쉐이더에서 렌더링
+      - Box Vertex 셋팅후 fragments shader에서 연산 처리
+      - 최초 기획은 fragments shader에서 bezier연산까지 하는거였으나 연산량이 많아질 우려가 있어서 전환
+      - ttf decoder에서 bezier를 8분할하여 직선으로 재배치
+      - 외곽선은 Point to Line Distance를 사용하여 연산
+      - 내부는 Winding Number Algorithm를 사용하여 연산
+      - 관련 문서
+        - Resources/shader/font_vs.txt
+        - Resources/shader/font_fs.txt
+        - Coder/TrueTypeDecoder.cpp
+          - glyf 모듈 관련 함수
 * 사운드
   - XAudio2
     - Windows용 사운드 랜더 모듈
