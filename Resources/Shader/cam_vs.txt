@@ -1,0 +1,33 @@
+#version 430 core
+layout(location = 0) in vec4 pos;
+layout(location = 1) in vec4 color;
+layout(location = 2) in vec2 tex;
+layout(location = 3) in vec3 normal;
+
+struct SCREEN_UNIFORM{
+	mat4 view;
+	mat4 proj;
+	uint width;
+	uint height;
+};
+
+layout(std430, binding = 1) buffer SCREEN{
+	SCREEN_UNIFORM scr;
+};
+
+out VS_OUT{
+	vec4 posCoord;
+	vec2 texCoord;
+	vec4 fragColor;
+	flat uint width;
+	flat uint height;
+}vs_out;
+
+void main(){
+	gl_Position = pos;
+	vs_out.posCoord = pos;
+	vs_out.texCoord = tex;
+	vs_out.fragColor = color;
+	vs_out.width = scr.width;
+	vs_out.height = scr.height;
+}

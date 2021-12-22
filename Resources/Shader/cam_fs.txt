@@ -1,0 +1,67 @@
+#version 430 core
+
+layout(rgba32ui) coherent uniform uimageBuffer imgAbuffer;
+layout(r32ui) coherent uniform uimage2D imgListHead;
+
+in VS_OUT{
+	vec4 posCoord;
+	vec2 texCoord;
+	vec4 fragColor;
+	flat uint width;
+	flat uint height;
+}vs_out;
+out vec4 out_color;
+
+vec4 blend(vec4 src, vec4 dist){
+	float oms = 1.0-src.a;
+	return vec4(src.r*src.a, src.g*src.a, src.b*src.a, src.a)+(dist*oms);
+}
+
+void main(){
+	ivec2 icoord = ivec2((vs_out.posCoord.x+1.0) * vs_out.width * 0.5, (vs_out.posCoord.y+1.0) * vs_out.height * 0.5);
+
+	uint idx = imageAtomicExchange(imgListHead, icoord, 0);
+	//uint idx = imageLoad(imgListHead, icoord).x;
+
+	vec4 fragments[16];
+	float depth[16];
+	int frag_sort[16];
+	for(int i = 0 ; i<16 ; ++i){fragments[i] = vec4(0.0, 0.0, 0.0, 0.0);	depth[i] = 0.0;	frag_sort[i] = i;}
+	uint frag_idx = 0;
+	
+	while(idx != 0){
+		uvec4 fragment = imageLoad(imgAbuffer, int(idx));
+		fragments[frag_idx] = unpackUnorm4x8(fragment.r);
+		depth[frag_idx] = uintBitsToFloat(fragment.g);
+		++frag_idx;
+		idx = fragment.w;
+	}
+	
+	//sort
+	for(int i = 0 ; i<frag_idx ; ++i){
+		for(int j = i ; j<frag_idx ; ++j){
+			if(depth[frag_sort[i]] > depth[frag_sort[j]]){
+				int temp = frag_sort[i];
+				frag_sort[i] = frag_sort[j];
+				frag_sort[j] = temp;
+			}
+		}
+	}
+
+	vec4 final_frag = vec4(0.0, 0.0, 0.0, 0.0);
+
+	//blend
+	for(int i = 0 ; i<frag_idx ; ++i){
+		final_frag = blend(final_frag, fragments[frag_sort[i]]);
+	}
+
+	out_color = vs_out.fragColor*final_frag;
+/*
+	if(frag_idx == 1){out_color = vec4(1.0f, 0.0f, 0.0f, 1.0f);}
+	else if(frag_idx == 2){out_color = vec4(0.0f, 1.0f, 0.0f, 1.0f);}
+	else if(frag_idx == 3){out_color = vec4(0.0f, 0.0f, 1.0f, 1.0f);}
+	else if(frag_idx == 0){out_color = vec4(0.0f, 0.0f, 0.0f, 1.0f);}
+	else{out_color = vec4(1.0f, 1.0f, 1.0f, 1.0f);}
+*/
+	//out_color = vec4(1.0, 0.0, 0.0, 1.0);
+}
